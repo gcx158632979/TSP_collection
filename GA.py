@@ -3,7 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+plt.rcParams['font.sans-serif'] = ['KaiTi']
 class GA(object):
     def __init__(self, num_city, num_total, iteration, data):
         self.num_city = num_city
@@ -15,16 +15,15 @@ class GA(object):
         self.mutate_ratio = 0.05
         # fruits中存每一个个体是下标的list
         self.dis_mat = self.compute_dis_mat(num_city, data)
-        self.fruits = self.greedy_init(self.dis_mat,num_total,num_city)
+        self.fruits = self.greedy_init(self.dis_mat,num_total,num_city) #初始化每个种群的城市顺序
         # 显示初始化后的最佳路径
-        scores = self.compute_adp(self.fruits)
-        sort_index = np.argsort(-scores)
-        init_best = self.fruits[sort_index[0]]
-        init_best = self.location[init_best]
-
+        scores = self.compute_adp(self.fruits) #计算种群的适应度
+        sort_index = np.argsort(-scores) #按照种群的适应度从大到小排泄
+        init_best = self.fruits[sort_index[0]]#选择适应度最大的种群
+        init_best = self.location[init_best]#按种群内的排列顺序遍历城市
         # 存储每个iteration的结果，画出收敛图
         self.iter_x = [0]
-        self.iter_y = [1. / scores[sort_index[0]]]
+        self.iter_y = [1. / scores[sort_index[0]]]#被选出的种群的路径长度
 
     def random_init(self, num_total, num_city):
         tmp = [x for x in range(num_city)]
@@ -108,11 +107,11 @@ class GA(object):
         list = list[::-1]
         return list[:index], list[index:]
 
-    def ga_cross(self, x, y):
+    def ga_cross(self, x, y):#待详细看，没看懂
         len_ = len(x)
         assert len(x) == len(y)
         path_list = [t for t in range(len_)]
-        order = list(random.sample(path_list, 2))
+        order = list(random.sample(path_list, 2))#从0-len()中随机选出两个值
         order.sort()
         start, end = order
 
@@ -120,14 +119,14 @@ class GA(object):
         tmp = x[start:end]
         x_conflict_index = []
         for sub in tmp:
-            index = y.index(sub)
+            index = y.index(sub)#找到x中每个城市的位次在y中的位次
             if not (index >= start and index < end):
                 x_conflict_index.append(index)
 
         y_confict_index = []
         tmp = y[start:end]
         for sub in tmp:
-            index = x.index(sub)
+            index = x.index(sub)#找到y中每个城市的位次在x中的位次
             if not (index >= start and index < end):
                 y_confict_index.append(index)
 
@@ -149,7 +148,7 @@ class GA(object):
 
     def ga_parent(self, scores, ga_choose_ratio):
         sort_index = np.argsort(-scores).copy()
-        sort_index = sort_index[0:int(ga_choose_ratio * len(sort_index))]
+        sort_index = sort_index[0:int(ga_choose_ratio * len(sort_index))]#选择适应度靠前的种群
         parents = []
         parents_score = []
         for index in sort_index:
@@ -159,10 +158,11 @@ class GA(object):
 
     def ga_choose(self, genes_score, genes_choose):
         sum_score = sum(genes_score)
-        score_ratio = [sub * 1.0 / sum_score for sub in genes_score]
+        score_ratio = [sub * 1.0 / sum_score for sub in genes_score]#每个种群的适应度占总种群的比率
         rand1 = np.random.rand()
-        rand2 = np.random.rand()
-        for i, sub in enumerate(score_ratio):
+        rand2 = np.random.rand()#产生一个0-1之间的数
+        #可能会出现一个问题，就是一直到循环结束都没有出现index1，index2同时小于0的情况，这个选择方式不太合理。
+        for i, sub in enumerate(score_ratio):#适应度高的被选出的概率大
             if rand1 >= 0:
                 rand1 -= sub
                 if rand1 < 0:
@@ -171,7 +171,7 @@ class GA(object):
                 rand2 -= sub
                 if rand2 < 0:
                     index2 = i
-            if rand1 < 0 and rand2 < 0:
+            if rand1 < 0 and rand2 < 0:#如果index1和index2都被附值了，则循环结束
                 break
         return list(genes_choose[index1]), list(genes_choose[index2])
 
@@ -181,7 +181,7 @@ class GA(object):
         start, end = min(order), max(order)
         tmp = gene[start:end]
         # np.random.shuffle(tmp)
-        tmp = tmp[::-1]
+        tmp = tmp[::-1]#翻转
         gene[start:end] = tmp
         return list(gene)
 
@@ -222,7 +222,7 @@ class GA(object):
         best_score = -math.inf
         self.best_record = []
         for i in range(1, self.iteration + 1):
-            tmp_best_one, tmp_best_score = self.ga()
+            tmp_best_one, tmp_best_score = self.ga()#每次ga都只
             self.iter_x.append(i)
             self.iter_y.append(1. / tmp_best_score)
             if tmp_best_score > best_score:
@@ -264,7 +264,7 @@ data = np.array(data)
 data = data[:, 1:]
 Best, Best_path = math.inf, None
 
-model = GA(num_city=data.shape[0], num_total=25, iteration=500, data=data.copy())
+model = GA(num_city=data.shape[0], num_total=25, iteration=500, data=data.copy())#num_total代表种群个数
 path, path_len = model.run()
 if path_len < Best:
     Best = path_len
