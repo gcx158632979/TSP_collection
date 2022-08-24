@@ -82,7 +82,7 @@ class GA(object):
         return dis_mat
 
     # 计算路径长度
-    def compute_pathlen(self, path, dis_mat):
+    def compute_pathlen(self, path, dis_mat):#由length的长度变为energy consumption
         try:
             a = path[0]
             b = path[-1]
