@@ -72,12 +72,12 @@ class GA(object):
                     continue
                 a = location[i]
                 b = location[j]
-                param = calcDubinsPath(waypoint[i], waypoint[j], 90, 20)
-                print(param.cost)
-                tmp = np.sqrt(sum([(x[0] - x[1]) ** 2 for x in zip(a, b)]))
+                #print(param.cost)
                 if type == "Euclidean":
+                    tmp = np.sqrt(sum([(x[0] - x[1]) ** 2 for x in zip(a, b)]))
                     dis_mat[i][j] = tmp
                 elif type == "Dubins":
+                    param = calcDubinsPath(waypoint[i], waypoint[j], 90, 20)
                     dis_mat[i][j] = param.cost
         return dis_mat
 
@@ -268,48 +268,89 @@ data = read_tsp('data/st70.tsp')
 
 data = np.array(data)
 data = data[:, 1:]
-
+datalist = []
+for i in range(0, len(data)):
+    p = [data[i][0], data[i][1]]
+    datalist.append(p)
+#print(datalist)
+#print(datalist.index([64,96]))
 Wptz = []
 for i in range(0, len(data)):
     p = Waypoint(data[i][0], data[i][1], 0)
-    print(p)
+    #print(p)
     Wptz.append(p)
-Best, Best_path = math.inf, None
 
-model = GA(num_city=data.shape[0], num_total=25, iteration=50, data=data.copy(), waypoint=Wptz.copy(), type="Dubins")#num_total代表种群个数
-path, path_len = model.run()
-if path_len < Best:
-    Best = path_len
-    Best_path = path
-print(Best,Best_path[0])
-for i in range (0, len(Best_path)-1):
-    p1 = Waypoint(Best_path[i][0], Best_path[i][1], 0)
-    p2 = Waypoint(Best_path[i+1][0], Best_path[i][1], 0)
-    param = calcDubinsPath(p1, p2, 90, 20)
-    print(param.cost)
+
+'''---------------------------Dubins----------------------------------'''
+Best_dubins, Best_path_dubins = math.inf, None
+
+model_dubins = GA(num_city=data.shape[0], num_total=25, iteration=50, data=data.copy(), waypoint=Wptz.copy(), type="Dubins")#num_total代表种群个数
+path_dubins, path_len_dubins = model_dubins.run()
+
+if path_len_dubins < Best_dubins:
+    Best_dubins = path_len_dubins
+    Best_path_dubins = path_dubins
+
+best_order = []
+for i in range(0, len(Best_path_dubins)):
+    index = datalist.index([Best_path_dubins[i][0],Best_path_dubins[i][1]])
+    best_order.append(index)
+'''---------------------------Euclidean----------------------------------'''
+Best_Euclidean, Best_path_Euclidean = math.inf, None
+
+model_Euclidean = GA(num_city=data.shape[0], num_total=25, iteration=50, data=data.copy(), waypoint=Wptz.copy(), type="Euclidean")#num_total代表种群个数
+path_Euclidean, path_len_Euclidean = model_Euclidean.run()
+if path_len_Euclidean < Best_Euclidean:
+    Best_Euclidean = path_len_Euclidean
+    Best_path_Euclidean = path_Euclidean
+'''---------------------------Plot Dubins----------------------------------'''    
+plt.figure(1)
+i = 0
+while i<len(best_order)-1:
+    param = calcDubinsPath(Wptz[best_order[i]], Wptz[best_order[i+1]], 90, 20)
     path = dubins_traj(param,1)
     # Plot the results
-    plt.plot(p1.x, p1.y, 'kx')
-    plt.plot(p2.x, p2.y, 'kx')
+    plt.plot(Wptz[i].x, Wptz[i].y, 'kx')
+    plt.plot(Wptz[i + 1].x, Wptz[i + 1].y, 'kx')
     plt.plot(path[:, 0], path[:, 1], 'b-')
+    i += 1
+
+# reaching back from the last point to the
+# starting one (optional)
+param = calcDubinsPath(Wptz[best_order[-1]], Wptz[best_order[0]], 90, 20)
+path = dubins_traj(param, 1)
+
+plt.plot(Wptz[-1].x, Wptz[-1].y, 'kx')
+plt.plot(Wptz[0].x, Wptz[0].y, 'kx')
+plt.plot(path[:, 0], path[:, 1], 'b-')
+
 
 plt.grid(True)
 plt.axis("equal")
 plt.title('Dubin\'s Curves Trajectory Generation')
 plt.xlabel('X')
 plt.ylabel('Y')
-plt.show()
 
+'''---------------------------Plot Euclidean----------------------------------'''  
+plt.figure(2)
 # # 加上一行因为会回到起点
+plt.scatter(Best_path_Euclidean[:, 0], Best_path_Euclidean[:,1])
+Best_path_Euclidean = np.vstack([Best_path_Euclidean, Best_path_Euclidean[0]])
+plt.plot(Best_path_Euclidean[:, 0], Best_path_Euclidean[:, 1])
+plt.grid(True)
+plt.axis("equal")
+plt.title('Euclidean\'s Curves Trajectory Generation')
+plt.xlabel('X')
+plt.ylabel('Y')
 # fig, axs = plt.subplots(2, 1, sharex=False, sharey=False)
-# axs[0].scatter(Best_path[:, 0], Best_path[:,1])
-# Best_path = np.vstack([Best_path, Best_path[0]])
-# axs[0].plot(Best_path[:, 0], Best_path[:, 1])
+# axs[0].scatter(Best_path_Euclidean[:, 0], Best_path_Euclidean[:,1])
+# Best_path_Euclidean = np.vstack([Best_path_Euclidean, Best_path_Euclidean[0]])
+# axs[0].plot(Best_path_Euclidean[:, 0], Best_path_Euclidean[:, 1])
 # axs[0].set_title('规划结果')
-# iterations = range(model.iteration)
-# best_record = model.best_record
+# iterations = range(model_Euclidean.iteration)
+# best_record = model_Euclidean.best_record
 # axs[1].plot(iterations, best_record)
 # axs[1].set_title('收敛曲线')
-# plt.show()
+plt.show()
 
 
