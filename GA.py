@@ -2,10 +2,10 @@ import random
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-
+from GA_dubins import calcDubinsPath, Waypoint, dubins_traj
 plt.rcParams['font.sans-serif'] = ['KaiTi']
 class GA(object):
-    def __init__(self, num_city, num_total, iteration, data):
+    def __init__(self, num_city, num_total, iteration, data, waypoint, type):
         self.num_city = num_city
         self.num_total = num_total
         self.scores = []
@@ -14,8 +14,8 @@ class GA(object):
         self.ga_choose_ratio = 0.2
         self.mutate_ratio = 0.05
         # fruits中存每一个个体是下标的list
-        self.dis_mat = self.compute_dis_mat(num_city, data)
-        self.fruits = self.greedy_init(self.dis_mat,num_total,num_city) #初始化每个种群的城市顺序
+        self.dis_mat = self.compute_dis_mat(num_city, data, waypoint, type)
+        self.fruits = self.greedy_init(self.dis_mat, num_total, num_city) #初始化每个种群的城市顺序
         # 显示初始化后的最佳路径
         scores = self.compute_adp(self.fruits) #计算种群的适应度
         sort_index = np.argsort(-scores) #按照种群的适应度从大到小排泄
@@ -61,8 +61,9 @@ class GA(object):
             result.append(result_one)
             start_index += 1
         return result
+
     # 计算不同城市之间的距离
-    def compute_dis_mat(self, num_city, location):
+    def compute_dis_mat(self, num_city, location, waypoint, type):
         dis_mat = np.zeros((num_city, num_city))
         for i in range(num_city):
             for j in range(num_city):
@@ -71,8 +72,13 @@ class GA(object):
                     continue
                 a = location[i]
                 b = location[j]
+                param = calcDubinsPath(waypoint[i], waypoint[j], 90, 20)
+                print(param.cost)
                 tmp = np.sqrt(sum([(x[0] - x[1]) ** 2 for x in zip(a, b)]))
-                dis_mat[i][j] = tmp
+                if type == "Euclidean":
+                    dis_mat[i][j] = tmp
+                elif type == "Dubins":
+                    dis_mat[i][j] = param.cost
         return dis_mat
 
     # 计算路径长度
@@ -262,23 +268,48 @@ data = read_tsp('data/st70.tsp')
 
 data = np.array(data)
 data = data[:, 1:]
+
+Wptz = []
+for i in range(0, len(data)):
+    p = Waypoint(data[i][0], data[i][1], 0)
+    print(p)
+    Wptz.append(p)
 Best, Best_path = math.inf, None
 
-model = GA(num_city=data.shape[0], num_total=25, iteration=500, data=data.copy())#num_total代表种群个数
+model = GA(num_city=data.shape[0], num_total=25, iteration=50, data=data.copy(), waypoint=Wptz.copy(), type="Dubins")#num_total代表种群个数
 path, path_len = model.run()
 if path_len < Best:
     Best = path_len
     Best_path = path
-# 加上一行因为会回到起点
-fig, axs = plt.subplots(2, 1, sharex=False, sharey=False)
-axs[0].scatter(Best_path[:, 0], Best_path[:,1])
-Best_path = np.vstack([Best_path, Best_path[0]])
-axs[0].plot(Best_path[:, 0], Best_path[:, 1])
-axs[0].set_title('规划结果')
-iterations = range(model.iteration)
-best_record = model.best_record
-axs[1].plot(iterations, best_record)
-axs[1].set_title('收敛曲线')
+print(Best,Best_path[0])
+for i in range (0, len(Best_path)-1):
+    p1 = Waypoint(Best_path[i][0], Best_path[i][1], 0)
+    p2 = Waypoint(Best_path[i+1][0], Best_path[i][1], 0)
+    param = calcDubinsPath(p1, p2, 90, 20)
+    print(param.cost)
+    path = dubins_traj(param,1)
+    # Plot the results
+    plt.plot(p1.x, p1.y, 'kx')
+    plt.plot(p2.x, p2.y, 'kx')
+    plt.plot(path[:, 0], path[:, 1], 'b-')
+
+plt.grid(True)
+plt.axis("equal")
+plt.title('Dubin\'s Curves Trajectory Generation')
+plt.xlabel('X')
+plt.ylabel('Y')
 plt.show()
+
+# # 加上一行因为会回到起点
+# fig, axs = plt.subplots(2, 1, sharex=False, sharey=False)
+# axs[0].scatter(Best_path[:, 0], Best_path[:,1])
+# Best_path = np.vstack([Best_path, Best_path[0]])
+# axs[0].plot(Best_path[:, 0], Best_path[:, 1])
+# axs[0].set_title('规划结果')
+# iterations = range(model.iteration)
+# best_record = model.best_record
+# axs[1].plot(iterations, best_record)
+# axs[1].set_title('收敛曲线')
+# plt.show()
 
 

@@ -63,16 +63,16 @@ def headingToStandard(hdg):
 def calcDubinsPath(wpt1, wpt2, vel, phi_lim):
     # Calculate a dubins path between two waypoints
     param = Param(wpt1, 0, 0)
-    tz        = [0, 0, 0, 0, 0, 0]
-    pz        = [0, 0, 0, 0, 0, 0]
-    qz        = [0, 0, 0, 0, 0, 0]
+    tz = [0, 0, 0, 0, 0, 0]
+    pz = [0, 0, 0, 0, 0, 0]
+    qz = [0, 0, 0, 0, 0, 0]
     param.seg_final = [0, 0, 0]
     # Convert the headings from NED to standard unit cirlce, and then to radians
     psi1 = headingToStandard(wpt1.psi)*math.pi/180
     psi2 = headingToStandard(wpt2.psi)*math.pi/180
 
     # Do math
-    param.turn_radius = (vel*vel)/(9.8*math.tan(phi_lim*math.pi/180))
+    param.turn_radius = 2#(vel*vel)/(9.8*math.tan(phi_lim*math.pi/180))
     dx = wpt2.x - wpt1.x
     dy = wpt2.y - wpt1.y
     D = math.sqrt(dx*dx + dy*dy)
@@ -258,17 +258,46 @@ def dubins_segment(seg_param, seg_init, seg_type):
         seg_end[2] = seg_init[2]
 
     return seg_end
+def read_tsp(path):
+    lines = open(path, 'r').readlines()
+    assert 'NODE_COORD_SECTION\n' in lines
+    index = lines.index('NODE_COORD_SECTION\n')
+    data = lines[index + 1:-1]
+    tmp = []
+    for line in data:
+        line = line.strip().split(' ')
+        if line[0] == 'EOF':
+            continue
+        tmpline = []
+        for x in line:
+            if x == '':
+                continue
+            else:
+                tmpline.append(float(x))
+        if tmpline == []:
+            continue
+        tmp.append(tmpline)
+    data = tmp
+    return data
 
 def main():
     # User's waypoints: [x, y, heading (degrees)]
-    pt1 = Waypoint(64,96,0)
-    pt2 = Waypoint(80,39,260)
-    pt3 = Waypoint(69,23,180)
-    pt4 = Waypoint(72,42,270)
+    data = read_tsp('data/st70.tsp')
+    data = np.array(data)
+    data = data[:, 1:]
+    Wptz = []
+    for i in range(0, len(data)-65):
+        p = Waypoint(data[i][0], data[i][1], 0)
+        print(p)
+        Wptz.append(p)
+    #pt1 = Waypoint(64,96,0)
+    #pt2 = Waypoint(80,39,260)
+    #pt3 = Waypoint(69,23,180)
+    #pt4 = Waypoint(72,42,270)
 
     # waypoints declared in order
-    Wptz = [pt1, pt2, pt3, pt4]
-
+    #Wptz = [pt1, pt2, pt3, pt4]
+    print(len(Wptz))
     # prepare adjacency matrix for tsp
     adjMatrix = [[0 for _ in Wptz] for _ in Wptz]
 
@@ -277,17 +306,19 @@ def main():
             param = calcDubinsPath(Wptz[i], Wptz[j], 90, 20)
             adjMatrix[i][j] = param.cost
 
-
+    print("finish_cal_dubins")
 
     # TSP
     distance_matrix = np.array(adjMatrix)
     best_permutation, min_distance  = solve_tsp_dynamic_programming(distance_matrix)
-    #print(best_permutation, min_distance)
+    print(best_permutation, min_distance)
 
-    
+    print("finish_cal_tsp")
+
     i = 0
     while i<len(Wptz)-1:
         param = calcDubinsPath(Wptz[best_permutation[i]], Wptz[best_permutation[i+1]], 90, 20)
+        print(param.cost)
         path = dubins_traj(param,1)
 
         # Plot the results
